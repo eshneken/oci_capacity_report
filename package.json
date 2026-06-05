@@ -1,0 +1,11 @@
+{
+  "name": "oci-capacity-dashboard",
+  "version": "1.0.0",
+  "description": "A local OCI compute capacity dashboard.",
+  "main": "server.js",
+  "scripts": {
+    "start:3001": "PORT=3001 node server.js",
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}
