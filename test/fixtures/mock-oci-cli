@@ -1,0 +1,113 @@
+#!/usr/bin/env node
+
+const args = process.argv.slice(2);
+const mode = process.env.MOCK_OCI_MODE || "default";
+
+function option(name) {
+  const index = args.indexOf(name);
+  return index >= 0 ? args[index + 1] : undefined;
+}
+
+function write(value) {
+  process.stdout.write(`${JSON.stringify(value)}\n`);
+}
+
+function failService(message = "Mock OCI service failure") {
+  process.stderr.write(
+    `ServiceError: ${JSON.stringify({ status: 500, code: "MockError", message })}\n`
+  );
+  process.exit(1);
+}
+
+if (mode === "bad-json") {
+  process.stdout.write("not json\n");
+  process.exit(0);
+}
+
+if (args[0] === "iam" && args[1] === "region-subscription" && args[2] === "list") {
+  if (mode === "subscription-error") {
+    failService("Could not list subscriptions");
+  }
+
+  write({
+    data: [
+      { "region-name": "us-phoenix-1", status: "PROVISIONING" },
+      { "region-name": "us-chicago-1", status: "READY" },
+      { "region-name": "us-ashburn-1", status: "READY" },
+      { "region-name": "us-ashburn-1", status: "READY" }
+    ]
+  });
+  process.exit(0);
+}
+
+if (args[0] === "iam" && args[1] === "availability-domain" && args[2] === "list") {
+  const region = option("--region");
+
+  if (region === "us-chicago-1") {
+    failService("Availability domains unavailable");
+  }
+
+  write({
+    data: [
+      { name: "ASH-AD-2" },
+      { name: "ASH-AD-1" }
+    ]
+  });
+  process.exit(0);
+}
+
+if (args[0] === "compute" && args[1] === "shape" && args[2] === "list") {
+  const availabilityDomain = option("--availability-domain");
+
+  if (availabilityDomain === "ASH-AD-2") {
+    write({ data: [{ shape: "VM.Standard3.Flex" }] });
+    process.exit(0);
+  }
+
+  write({
+    data: [
+      { shape: "VM.Standard.E5.Flex" },
+      { shape: "BM.Standard.E5.64" },
+      { shape: "VM.Standard.E6.Flex" },
+      { shape: "GPU.A10.1" }
+    ]
+  });
+  process.exit(0);
+}
+
+if (
+  args[0] === "compute" &&
+  args[1] === "compute-capacity-report" &&
+  args[2] === "create"
+) {
+  const shapeAvailabilities = JSON.parse(option("--shape-availabilities") || "[]");
+  const shape = shapeAvailabilities[0]?.instanceShape || "";
+
+  if (mode === "capacity-error") {
+    failService(`Capacity failed for ${shape}`);
+  }
+
+  const isFlex = shape.endsWith(".Flex");
+  write({
+    data: {
+      "shape-availabilities": [
+        {
+          "fault-domain": isFlex ? "FAULT-DOMAIN-1" : "FAULT-DOMAIN-2",
+          "instance-shape": shape,
+          "availability-status": isFlex ? "AVAILABLE" : "OUT_OF_HOST_CAPACITY",
+          "available-count": isFlex ? 8 : 0,
+          "instance-shape-config": isFlex
+            ? {
+                ocpus: shapeAvailabilities[0].instanceShapeConfig?.ocpus,
+                "memory-in-gbs": shapeAvailabilities[0].instanceShapeConfig?.memoryInGBs
+              }
+            : {}
+        }
+      ]
+    }
+  });
+  process.exit(0);
+}
+
+process.stderr.write(`Unexpected mock OCI command: ${args.join(" ")}\n`);
+process.exit(2);

@@ -4,6 +4,7 @@
   "description": "A local OCI compute capacity dashboard.",
   "main": "server.js",
   "scripts": {
+    "test": "node --test",
     "start:3001": "PORT=3001 node server.js",
     "start": "node server.js"
   },
