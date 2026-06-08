@@ -5,8 +5,17 @@
   "main": "server.js",
   "scripts": {
     "test": "node --test",
+    "parity:live": "node scripts/live-parity.js",
     "start:3001": "PORT=3001 node server.js",
     "start": "node server.js"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "oci-common": "^2.132.0",
+    "oci-core": "^2.132.0",
+    "oci-identity": "^2.132.0"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
+  }
 }
