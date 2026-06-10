@@ -1,0 +1,90 @@
+function createError(message) {
+  const error = new Error(message);
+  error.statusCode = 500;
+  error.serviceCode = "MockError";
+  return error;
+}
+
+function createClient(options = {}) {
+  const mode = options.mode || process.env.MOCK_OCI_MODE || "default";
+
+  return {
+    async getTenancyId() {
+      return "ocid1.tenancy.oc1..mock";
+    },
+
+    async listRegionSubscriptions() {
+      if (mode === "subscription-error") {
+        throw createError("Could not list subscriptions");
+      }
+      if (mode === "bad-json") {
+        throw new Error("OCI SDK returned malformed region subscription response");
+      }
+
+      return {
+        items: [
+          { regionName: "us-phoenix-1", status: "PROVISIONING" },
+          { regionName: "us-chicago-1", status: "READY" },
+          { regionName: "us-ashburn-1", status: "READY" },
+          { regionName: "us-ashburn-1", status: "READY" }
+        ]
+      };
+    },
+
+    async listAvailabilityDomains(request) {
+      if (request.region === "us-chicago-1") {
+        throw createError("Availability domains unavailable");
+      }
+
+      return {
+        items: [{ name: "ASH-AD-2" }, { name: "ASH-AD-1" }]
+      };
+    },
+
+    async listShapes(request) {
+      if (request.availabilityDomain === "ASH-AD-2") {
+        return { items: [{ shape: "VM.Standard3.Flex" }] };
+      }
+
+      return {
+        items: [
+          { shape: "VM.Standard.E5.Flex" },
+          { shape: "BM.Standard.E5.64" },
+          { shape: "VM.Standard.E6.Flex" },
+          { shape: "GPU.A10.1" }
+        ]
+      };
+    },
+
+    async createComputeCapacityReport(request) {
+      const shapeAvailability = request.createComputeCapacityReportDetails.shapeAvailabilities[0];
+      const shape = shapeAvailability.instanceShape;
+
+      if (mode === "capacity-error") {
+        throw createError(`Capacity failed for ${shape}`);
+      }
+
+      const isFlex = shape.endsWith(".Flex");
+      return {
+        computeCapacityReport: {
+          shapeAvailabilities: [
+            {
+              faultDomain: isFlex ? "FAULT-DOMAIN-1" : "FAULT-DOMAIN-2",
+              instanceShape: shape,
+              availabilityStatus: isFlex ? "AVAILABLE" : "OUT_OF_HOST_CAPACITY",
+              availableCount: isFlex ? 8 : 0,
+              instanceShapeConfig: isFlex
+                ? {
+                    ocpus: shapeAvailability.instanceShapeConfig?.ocpus,
+                    memoryInGBs: shapeAvailability.instanceShapeConfig?.memoryInGBs
+                  }
+                : {}
+            }
+          ]
+        }
+      };
+    }
+  };
+}
+
+module.exports = { createClient };

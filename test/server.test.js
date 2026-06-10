@@ -6,33 +6,10 @@ const { spawn } = require("node:child_process");
 const test = require("node:test");
 
 const projectRoot = path.resolve(__dirname, "..");
-const mockOciSource = path.join(__dirname, "fixtures", "mock-oci-cli");
+const mockClientFactory = path.join(__dirname, "fixtures", "mock-sdk-factory");
 
 async function withServer(t, options = {}) {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "oci-capacity-test-"));
-  const binDir = path.join(tempDir, "bin");
-  const ociDir = path.join(tempDir, ".oci");
-  fs.mkdirSync(binDir, { recursive: true });
-  fs.mkdirSync(ociDir, { recursive: true });
-
-  const mockOci = path.join(binDir, "oci");
-  fs.copyFileSync(mockOciSource, mockOci);
-  fs.chmodSync(mockOci, 0o755);
-
-  const configFile = path.join(ociDir, "config");
-  fs.writeFileSync(
-    configFile,
-    [
-      "[DEFAULT]",
-      "tenancy=ocid1.tenancy.oc1..mock",
-      "user=ocid1.user.oc1..mock",
-      "fingerprint=00:00:00",
-      "key_file=/tmp/mock-key.pem",
-      "region=us-ashburn-1",
-      ""
-    ].join("\n")
-  );
-
   const port = await freePort();
   const child = spawn(process.execPath, ["server.js"], {
     cwd: projectRoot,
@@ -40,8 +17,7 @@ async function withServer(t, options = {}) {
       ...process.env,
       HOST: "127.0.0.1",
       PORT: String(port),
-      PATH: `${binDir}${path.delimiter}${process.env.PATH}`,
-      OCI_CLI_CONFIG_FILE: configFile,
+      OCI_CAPACITY_CLIENT_FACTORY: mockClientFactory,
       MOCK_OCI_MODE: options.mode || "default"
     },
     stdio: ["ignore", "pipe", "pipe"]
@@ -216,12 +192,12 @@ test("region discovery failures return API errors", async (t) => {
   assert.deepEqual(body, { error: "Error: 500 - MockError - Could not list subscriptions" });
 });
 
-test("malformed OCI output returns API errors", async (t) => {
+test("malformed SDK responses return API errors", async (t) => {
   const server = await withServer(t, { mode: "bad-json" });
   const { response, body } = await server.json("/api/regions");
 
   assert.equal(response.status, 500);
-  assert.match(body.error, /^Error: OCI CLI returned non-JSON output:/);
+  assert.equal(body.error, "Error: OCI SDK returned malformed region subscription response");
 });
 
 test("report events stream start, progress, and done events", async (t) => {

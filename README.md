@@ -7,14 +7,11 @@ A local single-page dashboard for running OCI Compute capacity reports across th
 The app uses:
 
 - A small Node.js server for the web UI and API endpoints.
-- The OCI CLI for authentication and OCI API calls.
-- A Python helper script to run [`oci compute compute-capacity-report create`](https://docs.oracle.com/en-us/iaas/tools/oci-cli/latest/oci_cli_docs/cmdref/compute/compute-capacity-report/create.html) and normalize results.
+- The official OCI TypeScript/JavaScript SDK for authentication and OCI API calls.
 
 ## Prerequisites
 
 - Node.js 18 or newer.
-- Python 3.9 or newer.
-- OCI CLI installed and available on your `PATH`.
 - A valid OCI CLI config file at `~/.oci/config`.
 - A `DEFAULT` profile in `~/.oci/config` with at least:
   - `tenancy`
@@ -23,12 +20,6 @@ The app uses:
   - `key_file`
   - `region`
 - IAM permissions to list region subscriptions, list availability domains, list compute shapes, and create compute capacity reports.
-
-You can confirm the OCI CLI works with:
-
-```bash
-oci iam region-subscription list --all
-```
 
 ## Run The Dashboard
 
@@ -66,30 +57,13 @@ http://127.0.0.1:3001
 
 The dashboard streams progress while the report runs, including the region currently being checked.
 
-## Direct CLI Usage
-
-This project wraps the OCI CLI [`compute-capacity-report create`](https://docs.oracle.com/en-us/iaas/tools/oci-cli/latest/oci_cli_docs/cmdref/compute/compute-capacity-report/create.html) command, which generates host capacity reports for specific availability domains and shapes.
-
-You can also run the Python script directly:
+## Development Checks
 
 ```bash
-./oci_capacity_report.py --format table
+npm test
 ```
 
-Examples:
-
-```bash
-./oci_capacity_report.py --format table --families E5 --ocpus 16 --memory-gbs 64
-./oci_capacity_report.py --format json --families E6 --regions us-ashburn-1,us-chicago-1
-./oci_capacity_report.py --list-regions
-```
-
-Supported output formats:
-
-- `markdown`
-- `table`
-- `json`
-- `csv`
+The automated tests use a mocked OCI SDK client and do not call your tenancy.
 
 ## Notes
 
