@@ -65,12 +65,6 @@ npm test
 
 The automated tests use a mocked OCI SDK client and do not call your tenancy.
 
-An optional live parity check compares this branch against the Python implementation from `master` using your real OCI config:
-
-```bash
-npm run parity:live -- --families E5 --regions us-ashburn-1 --ocpus 1 --memory-gbs 16
-```
-
 ## Notes
 
 - The dashboard only shows regions your tenancy is subscribed to.

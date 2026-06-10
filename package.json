@@ -5,7 +5,6 @@
   "main": "server.js",
   "scripts": {
     "test": "node --test",
-    "parity:live": "node scripts/live-parity.js",
     "start:3001": "PORT=3001 node server.js",
     "start": "node server.js"
   },
